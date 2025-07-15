@@ -1,0 +1,16 @@
+# 测试文件
+test_button_detection.js
+
+# 临时文件
+*.tmp
+*.temp
+
+# 编辑器文件
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 系统文件
+.DS_Store
+Thumbs.db
