@@ -270,9 +270,228 @@
         return null;
     }
 
+    // 绝对位置定位私信按钮（基于页面布局特征）
+    function findButtonByAbsolutePosition() {
+        errorReporter.debug('开始绝对位置定位策略...');
+        
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        
+        // 策略A: 基于典型的抖音页面布局，私信按钮通常在右上角区域
+        const rightTopRegion = {
+            left: viewportWidth * 0.7, // 右侧30%区域
+            top: 0,
+            right: viewportWidth,
+            bottom: viewportHeight * 0.2 // 顶部20%区域
+        };
+        
+        const rightTopButton = findButtonInRegion(rightTopRegion, ['私信', '消息', 'message']);
+        if (rightTopButton) {
+            errorReporter.debug('在右上角区域找到私信按钮');
+            return rightTopButton;
+        }
+        
+        // 策略B: 查找固定在顶部的导航栏（通常使用固定定位）
+        const fixedElements = Array.from(document.querySelectorAll('*')).filter(el => {
+            const style = window.getComputedStyle(el);
+            return style.position === 'fixed' || style.position === 'sticky';
+        });
+        
+        for (const fixedEl of fixedElements) {
+            const rect = fixedEl.getBoundingClientRect();
+            // 检查是否在页面顶部
+            if (rect.top <= 100 && rect.width > viewportWidth * 0.3) {
+                const button = findButtonInElement(fixedEl, ['私信', '消息', 'message']);
+                if (button) {
+                    errorReporter.debug('在固定定位的顶部元素中找到私信按钮');
+                    return button;
+                }
+            }
+        }
+        
+        // 策略C: 基于Z-index查找最顶层元素（通常导航栏有较高的z-index）
+        const highZIndexElements = Array.from(document.querySelectorAll('*')).filter(el => {
+            const style = window.getComputedStyle(el);
+            const zIndex = parseInt(style.zIndex);
+            return !isNaN(zIndex) && zIndex >= 1000; // 高z-index元素
+        }).sort((a, b) => {
+            const aZIndex = parseInt(window.getComputedStyle(a).zIndex);
+            const bZIndex = parseInt(window.getComputedStyle(b).zIndex);
+            return bZIndex - aZIndex; // 按z-index降序排列
+        });
+        
+        for (const highZEl of highZIndexElements.slice(0, 5)) { // 只检查前5个最高z-index元素
+            const rect = highZEl.getBoundingClientRect();
+            // 检查是否在页面上方且宽度合理
+            if (rect.top <= 150 && rect.width > 200) {
+                const button = findButtonInElement(highZEl, ['私信', '消息', 'message']);
+                if (button) {
+                    errorReporter.debug('在高z-index元素中找到私信按钮');
+                    return button;
+                }
+            }
+        }
+        
+        // 策略D: 基于元素相对位置的网格搜索
+        const gridButton = findButtonByGridSearch();
+        if (gridButton) {
+            errorReporter.debug('通过网格搜索找到私信按钮');
+            return gridButton;
+        }
+        
+        // 策略E: 基于常见的CSS类名模式的位置分析
+        const patternButton = findButtonByPatternAnalysis();
+        if (patternButton) {
+            errorReporter.debug('通过模式分析找到私信按钮');
+            return patternButton;
+        }
+        
+        return null;
+    }
+    
+    // 在指定区域内查找按钮
+    function findButtonInRegion(region, keywords) {
+        const allElements = document.querySelectorAll('a, button, [role="button"], [onclick]');
+        
+        for (const element of allElements) {
+            if (!isElementVisible(element)) continue;
+            
+            const rect = element.getBoundingClientRect();
+            
+            // 检查元素是否在指定区域内
+            if (rect.left >= region.left && rect.top >= region.top && 
+                rect.right <= region.right && rect.bottom <= region.bottom) {
+                
+                // 检查是否包含关键词
+                const fullText = [
+                    element.textContent || '',
+                    element.getAttribute('aria-label') || '',
+                    element.getAttribute('title') || '',
+                    element.className || ''
+                ].join(' ').toLowerCase();
+                
+                if (keywords.some(keyword => fullText.includes(keyword.toLowerCase()))) {
+                    return element;
+                }
+            }
+        }
+        return null;
+    }
+    
+    // 在指定元素内查找按钮
+    function findButtonInElement(container, keywords) {
+        const buttons = container.querySelectorAll('a, button, [role="button"], [onclick]');
+        
+        for (const button of buttons) {
+            if (!isElementVisible(button)) continue;
+            
+            const fullText = [
+                button.textContent || '',
+                button.getAttribute('aria-label') || '',
+                button.getAttribute('title') || '',
+                button.className || ''
+            ].join(' ').toLowerCase();
+            
+            if (keywords.some(keyword => fullText.includes(keyword.toLowerCase()))) {
+                return button;
+            }
+        }
+        return null;
+    }
+    
+    // 网格搜索策略
+    function findButtonByGridSearch() {
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        
+        // 将页面分成网格，重点搜索顶部和右侧区域
+        const searchGrids = [
+            // 右上角 - 最优先
+            { x: 0.75, y: 0, width: 0.25, height: 0.15, priority: 1 },
+            // 顶部中右 
+            { x: 0.5, y: 0, width: 0.5, height: 0.1, priority: 2 },
+            // 整个顶部
+            { x: 0, y: 0, width: 1, height: 0.08, priority: 3 },
+            // 右侧边栏
+            { x: 0.85, y: 0, width: 0.15, height: 0.5, priority: 4 }
+        ];
+        
+        // 按优先级搜索
+        searchGrids.sort((a, b) => a.priority - b.priority);
+        
+        for (const grid of searchGrids) {
+            const region = {
+                left: viewportWidth * grid.x,
+                top: viewportHeight * grid.y,
+                right: viewportWidth * (grid.x + grid.width),
+                bottom: viewportHeight * (grid.y + grid.height)
+            };
+            
+            const button = findButtonInRegion(region, ['私信', '消息', 'message', 'pm', 'dm']);
+            if (button) {
+                return button;
+            }
+        }
+        
+        return null;
+    }
+    
+    // 模式分析策略
+    function findButtonByPatternAnalysis() {
+        // 常见的抖音页面结构模式
+        const patterns = [
+            // 模式1: header > nav > ul > li > a
+            'header nav ul li a, header nav li a',
+            // 模式2: 顶部固定容器的直接子链接
+            '.header a, .nav a, .navigation a, .top-bar a',
+            // 模式3: 基于flex布局的导航
+            '[style*="display: flex"] a, [style*="display:flex"] a',
+            // 模式4: 基于position的浮动元素
+            '[style*="position: fixed"] a, [style*="position: absolute"] a',
+            // 模式5: 特定的抖音类名模式（推测）
+            '[class*="header"] a, [class*="nav"] a, [class*="top"] a'
+        ];
+        
+        for (const pattern of patterns) {
+            try {
+                const elements = document.querySelectorAll(pattern);
+                
+                for (const element of elements) {
+                    if (!isElementVisible(element)) continue;
+                    
+                    const rect = element.getBoundingClientRect();
+                    // 只考虑页面上半部分的元素
+                    if (rect.top > window.innerHeight * 0.3) continue;
+                    
+                    const fullText = [
+                        element.textContent || '',
+                        element.getAttribute('aria-label') || '',
+                        element.getAttribute('title') || ''
+                    ].join(' ').toLowerCase();
+                    
+                    if (fullText.includes('私信') || fullText.includes('消息') || 
+                        fullText.includes('message') || fullText.includes('pm') || fullText.includes('dm')) {
+                        return element;
+                    }
+                }
+            } catch (e) {
+                errorReporter.debug(`模式 "${pattern}" 查找失败: ${e.message}`);
+            }
+        }
+        
+        return null;
+    }
+
     // 增强的私信按钮查找函数
     function findPrivateMessageButton() {
         errorReporter.debug('开始增强的私信按钮查找...');
+        
+        // 策略0: 绝对位置定位（基于页面布局分析）
+        const absoluteButton = findButtonByAbsolutePosition();
+        if (absoluteButton) {
+            errorReporter.debug('策略0成功: 通过绝对位置定位找到私信按钮');
+            return absoluteButton;
+        }
         
         // 策略1: 文本匹配 - 多种可能的文本
         const textVariations = ['私信', '消息', 'Message', 'PM', 'DM'];
@@ -605,6 +824,13 @@
     function findContactInContainer(container, contact) {
         if (!container) return null;
         
+        // 首先尝试绝对位置定位
+        const absoluteContact = findContactByAbsolutePosition(container, contact);
+        if (absoluteContact) {
+            errorReporter.debug('通过绝对位置在容器中找到联系人');
+            return absoluteContact;
+        }
+        
         const selectors = [
             '[class*="contact"]', '[class*="chat-item"]', '[class*="conversation"]',
             '[class*="user"]', '[class*="avatar"]', '[class*="name"]',
@@ -619,6 +845,95 @@
                 }
             }
         }
+        return null;
+    }
+    
+    // 基于绝对位置查找联系人
+    function findContactByAbsolutePosition(container, contact) {
+        const containerRect = container.getBoundingClientRect();
+        
+        // 策略1: 垂直列表布局分析（典型的聊天列表）
+        const listItems = findContactsInVerticalList(container, contact);
+        if (listItems) return listItems;
+        
+        // 策略2: 基于位置的网格搜索
+        const gridContact = findContactByPositionGrid(container, contact);
+        if (gridContact) return gridContact;
+        
+        // 策略3: 基于元素高度和排列模式
+        const patternContact = findContactByLayoutPattern(container, contact);
+        if (patternContact) return patternContact;
+        
+        return null;
+    }
+    
+    // 在垂直列表中查找联系人
+    function findContactsInVerticalList(container, contact) {
+        const allElements = Array.from(container.querySelectorAll('*')).filter(el => {
+            const rect = el.getBoundingClientRect();
+            return rect.height > 30 && rect.height < 200 && rect.width > 100; // 合理的联系人项尺寸
+        });
+        
+        // 按Y坐标排序，模拟垂直列表
+        allElements.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
+        
+        for (const element of allElements) {
+            if (isContactMatch(element, contact) && isElementVisible(element)) {
+                return element;
+            }
+        }
+        
+        return null;
+    }
+    
+    // 基于位置网格查找联系人
+    function findContactByPositionGrid(container, contact) {
+        const containerRect = container.getBoundingClientRect();
+        const cellHeight = 60; // 假设每个联系人项大约60px高
+        
+        // 从上到下搜索
+        for (let y = containerRect.top; y < containerRect.bottom; y += cellHeight) {
+            const elementsAtY = document.elementsFromPoint(
+                containerRect.left + containerRect.width / 2, // 中心X坐标
+                y
+            );
+            
+            for (const element of elementsAtY) {
+                if (container.contains(element) && isContactMatch(element, contact)) {
+                    return element;
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    // 基于布局模式查找联系人
+    function findContactByLayoutPattern(container, contact) {
+        // 查找具有相似高度的元素（暗示为列表项）
+        const allElements = Array.from(container.querySelectorAll('*'));
+        const heightGroups = {};
+        
+        allElements.forEach(el => {
+            const rect = el.getBoundingClientRect();
+            const height = Math.round(rect.height / 10) * 10; // 将高度归类到10px间隔
+            
+            if (height >= 40 && height <= 150) { // 合理的联系人项高度范围
+                if (!heightGroups[height]) heightGroups[height] = [];
+                heightGroups[height].push(el);
+            }
+        });
+        
+        // 找到最大的高度组（可能是联系人列表项）
+        const largestGroup = Object.values(heightGroups).reduce((max, current) => 
+            current.length > max.length ? current : max, []);
+        
+        for (const element of largestGroup) {
+            if (isContactMatch(element, contact) && isElementVisible(element)) {
+                return element;
+            }
+        }
+        
         return null;
     }
     
@@ -687,6 +1002,133 @@
         }
         
         return element; // 返回原元素作为备选
+    }
+    
+    // 基于绝对位置查找输入框
+    function findInputBoxByAbsolutePosition() {
+        errorReporter.debug('开始绝对位置定位输入框...');
+        
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        
+        // 策略A: 查找页面底部区域的输入框（聊天输入框通常在底部）
+        const bottomRegion = {
+            left: 0,
+            top: viewportHeight * 0.7, // 底部30%区域
+            right: viewportWidth,
+            bottom: viewportHeight
+        };
+        
+        const bottomInput = findInputInRegion(bottomRegion);
+        if (bottomInput) {
+            errorReporter.debug('在页面底部区域找到输入框');
+            return bottomInput;
+        }
+        
+        // 策略B: 查找固定定位的输入框容器
+        const fixedContainers = Array.from(document.querySelectorAll('*')).filter(el => {
+            const style = window.getComputedStyle(el);
+            return style.position === 'fixed' || style.position === 'sticky';
+        });
+        
+        for (const container of fixedContainers) {
+            const rect = container.getBoundingClientRect();
+            // 检查是否在页面下半部分
+            if (rect.bottom > viewportHeight * 0.5) {
+                const input = container.querySelector('textarea, input[type="text"], div[contenteditable="true"]');
+                if (input && isValidInputBox(input)) {
+                    errorReporter.debug('在固定定位容器中找到输入框');
+                    return input;
+                }
+            }
+        }
+        
+        // 策略C: 基于Z-index查找浮动输入区域
+        const highZIndexElements = Array.from(document.querySelectorAll('*')).filter(el => {
+            const style = window.getComputedStyle(el);
+            const zIndex = parseInt(style.zIndex);
+            return !isNaN(zIndex) && zIndex >= 100;
+        });
+        
+        for (const element of highZIndexElements) {
+            const rect = element.getBoundingClientRect();
+            // 检查是否在页面下半部分
+            if (rect.bottom > viewportHeight * 0.4) {
+                const input = element.querySelector('textarea, input[type="text"], div[contenteditable="true"]');
+                if (input && isValidInputBox(input)) {
+                    errorReporter.debug('在高z-index元素中找到输入框');
+                    return input;
+                }
+            }
+        }
+        
+        // 策略D: 垂直位置扫描 - 从底部向上搜索最下方的有效输入框
+        const allInputs = document.querySelectorAll('textarea, input[type="text"], div[contenteditable="true"]');
+        let bottomMostInput = null;
+        let bottomMostY = -1;
+        
+        for (const input of allInputs) {
+            if (isValidInputBox(input)) {
+                const rect = input.getBoundingClientRect();
+                if (rect.bottom > bottomMostY) {
+                    bottomMostY = rect.bottom;
+                    bottomMostInput = input;
+                }
+            }
+        }
+        
+        if (bottomMostInput) {
+            errorReporter.debug('通过垂直位置扫描找到最底部的输入框');
+            return bottomMostInput;
+        }
+        
+        // 策略E: 基于元素在视窗中的相对位置
+        const centerBottomInput = findInputInCenterBottom();
+        if (centerBottomInput) {
+            errorReporter.debug('在中心底部区域找到输入框');
+            return centerBottomInput;
+        }
+        
+        return null;
+    }
+    
+    // 在指定区域查找输入框
+    function findInputInRegion(region) {
+        const inputSelectors = ['textarea', 'input[type="text"]', 'div[contenteditable="true"]'];
+        
+        for (const selector of inputSelectors) {
+            const inputs = document.querySelectorAll(selector);
+            
+            for (const input of inputs) {
+                if (!isValidInputBox(input)) continue;
+                
+                const rect = input.getBoundingClientRect();
+                
+                // 检查输入框是否在指定区域内
+                if (rect.left >= region.left && rect.top >= region.top && 
+                    rect.right <= region.right && rect.bottom <= region.bottom) {
+                    return input;
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    // 在页面中心底部区域查找输入框
+    function findInputInCenterBottom() {
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        
+        // 定义中心底部区域
+        const centerBottomRegion = {
+            left: viewportWidth * 0.1,  // 排除左右边缘
+            top: viewportHeight * 0.6,  // 底部40%区域
+            right: viewportWidth * 0.9,
+            bottom: viewportHeight
+        };
+        
+        return findInputInRegion(centerBottomRegion);
     }
     
     // 验证输入框是否有效
@@ -769,6 +1211,14 @@
                 try {
                     // 等待聊天界面加载
                     await sleep(1000);
+                    
+                    // 策略0: 绝对位置定位输入框
+                    const absoluteInputBox = findInputBoxByAbsolutePosition();
+                    if (absoluteInputBox) {
+                        inputBox = absoluteInputBox;
+                        errorReporter.debug('通过绝对位置找到输入框');
+                        break;
+                    }
                     
                     // 策略1: 专门的输入框选择器
                     const inputSelectors = [
