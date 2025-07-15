@@ -1,13 +1,22 @@
 // ==UserScript==
 // @name         抖音自动续火花
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.1
 // @description  自动给抖音指定联系人发送私信，保持互动（续火花）
 // @author       Copilot
 // @match        https://www.douyin.com/*
 // @icon         https://www.douyin.com/favicon.ico
 // @grant        none
 // ==/UserScript==
+
+/*
+ * 更新说明 v1.1：
+ * - 修复了私信按钮检测问题，支持嵌套HTML结构
+ * - 改进了元素选择器，能够找到类似 <p class="jenVD1aU">私信</p> 的按钮
+ * - 增加了更多调试日志，便于问题排查
+ * - 优化了联系人查找逻辑
+ * - 改进了错误提示信息
+ */
 
 (function() {
     'use strict';
@@ -39,16 +48,67 @@
         // 1. 点击首页右上角“私信”按钮
         let msgBtn = null;
         for (let i = 0; i < 10; i++) {
+            // 首先尝试原有的直接选择器
             msgBtn = Array.from(document.querySelectorAll('a[aria-label],button[aria-label],span[aria-label],a[title],button[title],span[title]'))
                 .find(el => /私信/.test(el.getAttribute('aria-label')||'') || /私信/.test(el.getAttribute('title')||'') || /私信/.test(el.textContent));
+            
+            // 如果没找到，尝试更广泛的搜索，包括嵌套元素
+            if (!msgBtn) {
+                // 查找包含"私信"文本的p元素，然后找其可点击的父元素
+                const msgText = Array.from(document.querySelectorAll('p, span, div'))
+                    .find(el => el.textContent && el.textContent.trim() === '私信');
+                if (msgText) {
+                    // 向上查找可点击的父元素
+                    let parent = msgText.parentElement;
+                    while (parent && parent !== document.body) {
+                        if (parent.tagName === 'A' || parent.tagName === 'BUTTON' || 
+                            parent.onclick || parent.getAttribute('role') === 'button' ||
+                            parent.style.cursor === 'pointer' || parent.classList.contains('clickable')) {
+                            msgBtn = parent;
+                            break;
+                        }
+                        parent = parent.parentElement;
+                    }
+                }
+            }
+            
+            // 如果还是没找到，尝试查找任何包含"私信"的可点击元素
+            if (!msgBtn) {
+                msgBtn = Array.from(document.querySelectorAll('a, button, div[role="button"], span[role="button"], div[onclick], span[onclick]'))
+                    .find(el => el.textContent && el.textContent.includes('私信'));
+            }
+            
+            // 最后尝试：查找任何包含"私信"文本的元素及其父级
+            if (!msgBtn) {
+                const allElements = document.querySelectorAll('*');
+                for (let el of allElements) {
+                    if (el.textContent && el.textContent.includes('私信') && el.textContent.length < 20) {
+                        // 检查元素本身或父级是否可点击
+                        let candidate = el;
+                        while (candidate && candidate !== document.body) {
+                            if (candidate.tagName === 'A' || candidate.tagName === 'BUTTON' || 
+                                candidate.onclick || candidate.getAttribute('role') === 'button' ||
+                                window.getComputedStyle(candidate).cursor === 'pointer') {
+                                msgBtn = candidate;
+                                break;
+                            }
+                            candidate = candidate.parentElement;
+                        }
+                        if (msgBtn) break;
+                    }
+                }
+            }
+            
             if (msgBtn) {
+                console.log('[续火花] 找到私信按钮:', msgBtn);
                 msgBtn.click();
                 break;
             }
+            console.log(`[续火花] 第${i+1}次尝试查找私信按钮...`);
             await sleep(500);
         }
         if (!msgBtn) {
-            console.log('[续火花] 未找到私信按钮');
+            console.log('[续火花] 未找到私信按钮，请检查页面是否正常加载');
             return;
         }
         await sleep(WAIT * 2);
@@ -67,14 +127,16 @@
             if (contactNode) {
                 // 若为img，点父级；否则点自己
                 let clickable = contactNode.tagName === 'IMG' && contactNode.parentElement ? contactNode.parentElement : contactNode;
+                console.log(`[续火花] 找到联系人 ${contact}:`, clickable);
                 clickable.click();
                 found = true;
                 break;
             }
+            console.log(`[续火花] 第${i+1}次尝试查找联系人: ${contact}...`);
             await sleep(WAIT);
         }
         if (!found) {
-            console.log(`[续火花] 未找到联系人: ` + contact);
+            console.log(`[续火花] 未找到联系人: ${contact}，请确认联系人昵称是否正确`);
             return;
         }
         await sleep(WAIT);
@@ -87,11 +149,15 @@
                 // 兼容无placeholder
                 inputBox = document.querySelector('div[contenteditable="true"]');
             }
-            if (inputBox) break;
+            if (inputBox) {
+                console.log('[续火花] 找到输入框:', inputBox);
+                break;
+            }
+            console.log(`[续火花] 第${i+1}次尝试查找输入框...`);
             await sleep(500);
         }
         if (!inputBox) {
-            console.log('[续火花] 未找到输入框');
+            console.log('[续火花] 未找到输入框，请确认已进入私信对话界面');
             return;
         }
         // 输入消息
@@ -102,21 +168,26 @@
         // 4. 发送消息（优先点“发送”按钮，否则模拟回车）
         let sendBtn = Array.from(document.querySelectorAll('button,span')).find(el => /发送/.test(el.textContent));
         if (sendBtn && !sendBtn.disabled) {
+            console.log('[续火花] 使用发送按钮发送消息');
             sendBtn.click();
         } else {
+            console.log('[续火花] 使用回车键发送消息');
             let evt = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: 'Enter', code: 'Enter', which: 13, keyCode: 13 });
             inputBox.dispatchEvent(evt);
         }
         await sleep(WAIT);
 
-        console.log(`[续火花] 已向 ${contact} 发送消息`);
+        console.log(`[续火花] 已向 ${contact} 发送消息: "${MESSAGE}"`);
     }
 
     async function main() {
+        console.log('[续火花] 开始执行自动续火花任务');
         for (let contact of CONTACTS) {
+            console.log(`[续火花] 处理联系人: ${contact}`);
             await sendFireToContact(contact);
             await sleep(WAIT);
         }
+        console.log('[续火花] 本轮续火花任务完成');
     }
 
 
