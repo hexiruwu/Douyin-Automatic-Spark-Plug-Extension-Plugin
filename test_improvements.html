@@ -161,6 +161,7 @@
         <div class="test-section">
             <h3>测试控制</h3>
             <button onclick="testPrivateMessageButtonFinding()" style="margin: 5px; padding: 10px 15px;">测试私信按钮查找</button>
+            <button onclick="testAbsolutePositioning()" style="margin: 5px; padding: 10px 15px; background: #17a2b8; color: white;">测试绝对位置定位</button>
             <button onclick="testContactFinding()" style="margin: 5px; padding: 10px 15px;">测试联系人查找</button>
             <button onclick="testInputBoxFinding()" style="margin: 5px; padding: 10px 15px;">测试输入框查找</button>
             <button onclick="testFullScript()" style="margin: 5px; padding: 10px 15px; background: #28a745; color: white;">完整测试</button>
@@ -215,6 +216,50 @@
                 logResult('发送失败: 消息内容为空', true);
             }
         });
+        
+        // 测试绝对位置定位功能
+        async function testAbsolutePositioning() {
+            logResult('开始测试绝对位置定位功能...');
+            
+            try {
+                // 测试私信按钮的绝对位置定位
+                logResult('测试私信按钮绝对位置定位...');
+                const button = findButtonByAbsolutePosition();
+                if (button) {
+                    logResult('✅ 绝对位置定位成功找到私信按钮');
+                } else {
+                    logResult('⚠️ 绝对位置定位未找到私信按钮');
+                }
+                
+                // 显示聊天界面以测试联系人和输入框定位
+                document.getElementById('chat-interface').style.display = 'block';
+                document.getElementById('message-area').style.display = 'block';
+                
+                // 测试联系人绝对位置定位
+                logResult('测试联系人绝对位置定位...');
+                const chatInterface = document.getElementById('chat-interface');
+                const contact = findContactByAbsolutePosition(chatInterface, 'HH');
+                if (contact) {
+                    logResult('✅ 绝对位置定位成功找到联系人');
+                } else {
+                    logResult('⚠️ 绝对位置定位未找到联系人');
+                }
+                
+                // 测试输入框绝对位置定位
+                logResult('测试输入框绝对位置定位...');
+                const inputBox = findInputBoxByAbsolutePosition();
+                if (inputBox) {
+                    logResult('✅ 绝对位置定位成功找到输入框');
+                } else {
+                    logResult('⚠️ 绝对位置定位未找到输入框');
+                }
+                
+                logResult('绝对位置定位测试完成');
+                
+            } catch (error) {
+                logResult(`❌ 绝对位置定位测试异常: ${error.message}`, true);
+            }
+        }
         
         // 测试函数
         async function testPrivateMessageButtonFinding() {
@@ -279,6 +324,7 @@
             
             const tests = [
                 { name: '私信按钮查找', func: testPrivateMessageButtonFinding },
+                { name: '绝对位置定位', func: testAbsolutePositioning },
                 { name: '联系人查找', func: testContactFinding },
                 { name: '输入框查找', func: testInputBoxFinding }
             ];

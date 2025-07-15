@@ -111,7 +111,25 @@ const SCHEDULE_TIME = "09:00";  // 每天9点执行
 
 ### 增强的私信按钮查找算法
 
-实现了5种查找策略：
+实现了6种查找策略，其中包括新增的绝对位置定位方法：
+
+#### 策略0: 绝对位置定位（新增）
+基于页面布局特征和元素位置的智能定位：
+- **右上角区域定位**: 基于典型抖音布局，私信按钮通常在右上角
+- **固定定位元素查找**: 分析页面顶部的固定定位导航栏
+- **Z-index层级分析**: 查找高层级的界面元素
+- **网格搜索**: 将页面分成优先级网格进行搜索
+- **模式分析**: 基于常见CSS类名模式的位置分析
+
+```javascript
+// 绝对位置定位示例
+const rightTopRegion = {
+    left: viewportWidth * 0.7,  // 右侧30%区域
+    top: 0,
+    right: viewportWidth,
+    bottom: viewportHeight * 0.2 // 顶部20%区域
+};
+```
 
 #### 策略1: 多文本变体匹配
 ```javascript
@@ -140,6 +158,14 @@ const cssSelectors = [
 
 ### 改进的联系人查找
 
+#### 绝对位置定位（新增）
+```javascript
+function findContactByAbsolutePosition(container, contact)
+```
+- **垂直列表分析**: 基于典型聊天列表的垂直排列特征
+- **位置网格搜索**: 使用坐标网格系统查找联系人
+- **布局模式识别**: 分析相似高度元素识别列表项
+
 #### 多容器搜索策略
 ```javascript
 function findContactInContainer(container, contact)
@@ -156,6 +182,16 @@ function getClickableElement(element)
 ```
 
 ### 强化的输入框检测
+
+#### 绝对位置定位（新增）
+```javascript
+function findInputBoxByAbsolutePosition()
+```
+- **底部区域扫描**: 聊天输入框通常位于页面底部
+- **固定定位查找**: 分析固定或粘性定位的输入容器
+- **Z-index分析**: 查找高层级浮动输入区域
+- **垂直位置扫描**: 找到页面最底部的有效输入框
+- **中心底部定位**: 专门搜索页面中心底部区域
 
 #### 输入框验证
 ```javascript
@@ -177,7 +213,31 @@ function isValidInputBox(element)
 2. **键盘发送**: 多种Enter键组合
 3. **表单提交**: 备选提交方式
 
-#### 改进的事件模拟
+#### 绝对位置定位的优势
+
+相比传统的选择器和文本匹配方法，绝对位置定位具有以下优势：
+
+1. **布局无关性**: 不依赖特定的CSS类名或HTML结构
+2. **视觉定位**: 基于用户实际看到的元素位置进行定位
+3. **适应性强**: 能够适应页面结构的变化和更新
+4. **效率更高**: 直接基于坐标和视窗位置进行搜索
+5. **覆盖面广**: 能够找到传统方法遗漏的元素
+
+#### 位置定位原理
+
+```javascript
+// 示例：查找右上角私信按钮
+const rightTopRegion = {
+    left: viewportWidth * 0.7,   // 从70%宽度开始
+    top: 0,                      // 从顶部开始
+    right: viewportWidth,        // 到页面右边
+    bottom: viewportHeight * 0.2 // 到20%高度处
+};
+```
+
+这种方法模拟了人眼查找元素的过程，更加符合用户的使用习惯。
+
+### 改进的事件模拟
 ```javascript
 // 触发多种事件确保检测到输入
 const events = ['input', 'keyup', 'change', 'paste'];

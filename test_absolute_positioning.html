@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>绝对位置定位测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        
+        /* 模拟抖音顶部导航 */
+        .top-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 1000;
+        }
+        
+        .logo {
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .nav-buttons {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .nav-button {
+            background: none;
+            border: 1px solid #fff;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        
+        .nav-button:hover {
+            background: #333;
+        }
+        
+        /* 模拟聊天界面 */
+        .chat-container {
+            margin-top: 80px;
+            display: flex;
+            height: calc(100vh - 100px);
+        }
+        
+        .contact-list {
+            width: 300px;
+            background: white;
+            border-right: 1px solid #ccc;
+            overflow-y: auto;
+        }
+        
+        .contact-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .contact-item:hover {
+            background: #f5f5f5;
+        }
+        
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #ccc;
+        }
+        
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .input-area {
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            left: 300px;
+            height: 80px;
+            background: white;
+            border-top: 1px solid #ccc;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 500;
+        }
+        
+        .message-input {
+            flex: 1;
+            height: 40px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 0 12px;
+            margin-right: 10px;
+        }
+        
+        .send-button {
+            height: 40px;
+            padding: 0 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .test-panel {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            width: 250px;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 15px;
+            z-index: 2000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .test-button {
+            width: 100%;
+            margin: 5px 0;
+            padding: 8px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .test-button:hover {
+            background: #218838;
+        }
+        
+        .result {
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <!-- 模拟抖音顶部导航 -->
+    <div class="top-nav">
+        <div class="logo">抖音</div>
+        <div class="nav-buttons">
+            <a href="#" class="nav-button" id="message-button">私信</a>
+            <a href="#" class="nav-button">关注</a>
+            <a href="#" class="nav-button">个人中心</a>
+        </div>
+    </div>
+    
+    <!-- 模拟聊天界面 -->
+    <div class="chat-container">
+        <div class="contact-list" id="contact-list">
+            <div class="contact-item" data-contact="HH">
+                <div class="avatar"></div>
+                <div>
+                    <div style="font-weight: bold;">HH</div>
+                    <div style="font-size: 12px; color: #666;">2小时前</div>
+                </div>
+            </div>
+            <div class="contact-item" data-contact="联系人2">
+                <div class="avatar"></div>
+                <div>
+                    <div style="font-weight: bold;">联系人2</div>
+                    <div style="font-size: 12px; color: #666;">1天前</div>
+                </div>
+            </div>
+            <div class="contact-item" data-contact="测试用户">
+                <div class="avatar"></div>
+                <div>
+                    <div style="font-weight: bold;">测试用户</div>
+                    <div style="font-size: 12px; color: #666;">3天前</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="chat-area">
+            <div class="chat-messages">
+                <p>这里是聊天消息区域...</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 模拟输入区域 -->
+    <div class="input-area">
+        <input type="text" class="message-input" placeholder="输入消息..." />
+        <button class="send-button">发送</button>
+    </div>
+    
+    <!-- 测试面板 -->
+    <div class="test-panel">
+        <h4>绝对位置定位测试</h4>
+        <button class="test-button" onclick="testPrivateMessageButton()">测试私信按钮定位</button>
+        <button class="test-button" onclick="testContactFinding()">测试联系人定位</button>
+        <button class="test-button" onclick="testInputBoxFinding()">测试输入框定位</button>
+        <button class="test-button" onclick="testAllMethods()">测试所有方法</button>
+        <div id="test-results"></div>
+    </div>
+
+    <script>
+        // 包含核心的绝对位置定位函数
+        
+        function logResult(message, isError = false) {
+            const results = document.getElementById('test-results');
+            const div = document.createElement('div');
+            div.className = isError ? 'result error' : 'result success';
+            div.textContent = message;
+            results.appendChild(div);
+            
+            // 保持最新的5个结果
+            while (results.children.length > 5) {
+                results.removeChild(results.firstChild);
+            }
+        }
+        
+        function isElementVisible(element) {
+            if (!element) return false;
+            const style = window.getComputedStyle(element);
+            return style.display !== 'none' && 
+                   style.visibility !== 'hidden' && 
+                   style.opacity !== '0' &&
+                   element.offsetWidth > 0 && 
+                   element.offsetHeight > 0;
+        }
+        
+        function isElementClickable(element) {
+            if (!element) return false;
+            const tagName = element.tagName.toLowerCase();
+            return tagName === 'a' || 
+                   tagName === 'button' || 
+                   element.hasAttribute('onclick') || 
+                   element.getAttribute('role') === 'button' ||
+                   element.hasAttribute('href') ||
+                   window.getComputedStyle(element).cursor === 'pointer';
+        }
+        
+        function findButtonInRegion(region, keywords) {
+            const allElements = document.querySelectorAll('a, button, [role="button"], [onclick]');
+            
+            for (const element of allElements) {
+                if (!isElementVisible(element)) continue;
+                
+                const rect = element.getBoundingClientRect();
+                
+                // 检查元素是否在指定区域内
+                if (rect.left >= region.left && rect.top >= region.top && 
+                    rect.right <= region.right && rect.bottom <= region.bottom) {
+                    
+                    // 检查是否包含关键词
+                    const fullText = [
+                        element.textContent || '',
+                        element.getAttribute('aria-label') || '',
+                        element.getAttribute('title') || '',
+                        element.className || ''
+                    ].join(' ').toLowerCase();
+                    
+                    if (keywords.some(keyword => fullText.includes(keyword.toLowerCase()))) {
+                        return element;
+                    }
+                }
+            }
+            return null;
+        }
+        
+        function findButtonByAbsolutePosition() {
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            
+            // 策略A: 基于典型的抖音页面布局，私信按钮通常在右上角区域
+            const rightTopRegion = {
+                left: viewportWidth * 0.7, // 右侧30%区域
+                top: 0,
+                right: viewportWidth,
+                bottom: viewportHeight * 0.2 // 顶部20%区域
+            };
+            
+            const rightTopButton = findButtonInRegion(rightTopRegion, ['私信', '消息', 'message']);
+            if (rightTopButton) {
+                return rightTopButton;
+            }
+            
+            return null;
+        }
+        
+        function findContactByAbsolutePosition(container, contact) {
+            if (!container) return null;
+            
+            // 垂直列表布局分析
+            const allElements = Array.from(container.querySelectorAll('*')).filter(el => {
+                const rect = el.getBoundingClientRect();
+                return rect.height > 30 && rect.height < 200 && rect.width > 100;
+            });
+            
+            // 按Y坐标排序，模拟垂直列表
+            allElements.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
+            
+            for (const element of allElements) {
+                const fullText = [
+                    element.textContent || '',
+                    element.getAttribute('data-contact') || '',
+                    element.getAttribute('title') || ''
+                ].join(' ');
+                
+                if (fullText.includes(contact) && isElementVisible(element)) {
+                    return element;
+                }
+            }
+            
+            return null;
+        }
+        
+        function findInputBoxByAbsolutePosition() {
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            
+            // 策略A: 查找页面底部区域的输入框
+            const allInputs = document.querySelectorAll('input[type="text"], textarea');
+            let bottomMostInput = null;
+            let bottomMostY = -1;
+            
+            for (const input of allInputs) {
+                const rect = input.getBoundingClientRect();
+                if (rect.bottom > bottomMostY && isElementVisible(input)) {
+                    bottomMostY = rect.bottom;
+                    bottomMostInput = input;
+                }
+            }
+            
+            return bottomMostInput;
+        }
+        
+        // 测试函数
+        function testPrivateMessageButton() {
+            const button = findButtonByAbsolutePosition();
+            if (button) {
+                button.style.border = '3px solid red';
+                logResult('✅ 成功找到私信按钮');
+                setTimeout(() => button.style.border = '', 2000);
+            } else {
+                logResult('❌ 未找到私信按钮', true);
+            }
+        }
+        
+        function testContactFinding() {
+            const container = document.getElementById('contact-list');
+            const contact = findContactByAbsolutePosition(container, 'HH');
+            if (contact) {
+                contact.style.background = 'yellow';
+                logResult('✅ 成功找到联系人 HH');
+                setTimeout(() => contact.style.background = '', 2000);
+            } else {
+                logResult('❌ 未找到联系人 HH', true);
+            }
+        }
+        
+        function testInputBoxFinding() {
+            const input = findInputBoxByAbsolutePosition();
+            if (input) {
+                input.style.border = '3px solid green';
+                logResult('✅ 成功找到输入框');
+                setTimeout(() => input.style.border = '', 2000);
+            } else {
+                logResult('❌ 未找到输入框', true);
+            }
+        }
+        
+        function testAllMethods() {
+            logResult('开始测试所有绝对位置定位方法...');
+            setTimeout(() => testPrivateMessageButton(), 500);
+            setTimeout(() => testContactFinding(), 1000);
+            setTimeout(() => testInputBoxFinding(), 1500);
+            setTimeout(() => logResult('所有测试完成'), 2000);
+        }
+        
+        // 页面加载完成后初始化
+        window.addEventListener('load', function() {
+            logResult('绝对位置定位测试页面已加载');
+        });
+    </script>
+</body>
+</html>
