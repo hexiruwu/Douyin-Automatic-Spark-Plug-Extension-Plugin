@@ -1,3 +1,4 @@
+
 // ==UserScript==
 // @name         抖音自动续火花 (增强错误报告版)
 // @namespace    http://tampermonkey.net/
